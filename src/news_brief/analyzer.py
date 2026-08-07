@@ -33,10 +33,16 @@ class CloudflareAnalyzer:
         return session
 
     def analyze(self, story: Story, config: dict) -> Story:
+        topics = [{
+            "id": topic["id"],
+            "name": topic["name"],
+            "description": topic.get("description", ""),
+            "keywords": topic["keywords"],
+        } for topic in config["topics"]]
         prompt = {
-            "topic": config["topic"], "keywords": config["keywords"], "exclude": config["exclude"],
+            "topics": topics, "exclude": config["exclude"],
             "article": {"title": story.title, "publisher": story.publisher, "text": (story.content or story.excerpt)[:12000]},
-            "instruction": "Return only JSON with relevance (boolean), matched_topics (string array), relevance_score (0..1), summary (2 factual sentences), why_it_matters (1 sentence).",
+            "instruction": "Return only JSON with relevance (boolean), primary_topic (an exact topic id, or null when irrelevant), matched_topics (array of exact topic ids), relevance_score (0..1), summary (2 factual sentences), and why_it_matters (1 sentence). Choose one primary topic for every relevant article.",
         }
         last_error = None
         for attempt in range(2):
@@ -49,11 +55,21 @@ class CloudflareAnalyzer:
                 response.raise_for_status()
                 content = response.json()["choices"][0]["message"]["content"]
                 data = json.loads(content)
-                required = {"relevance", "matched_topics", "relevance_score", "summary", "why_it_matters"}
+                required = {"relevance", "primary_topic", "matched_topics", "relevance_score", "summary", "why_it_matters"}
                 if not required <= set(data) or not isinstance(data["relevance"], bool):
                     raise ValueError("Malformed analysis object")
+                if not isinstance(data["matched_topics"], list):
+                    raise ValueError("Malformed topic matches")
+                valid_topics = {topic["id"] for topic in topics}
+                primary_topic = data["primary_topic"]
+                if data["relevance"] and primary_topic not in valid_topics:
+                    raise ValueError("Relevant article has an invalid primary topic")
+                matched_topics = [str(value) for value in data["matched_topics"] if str(value) in valid_topics]
+                if data["relevance"] and primary_topic not in matched_topics:
+                    matched_topics.insert(0, str(primary_topic))
                 story.relevance = data["relevance"]
-                story.matched_topics = [str(x) for x in data["matched_topics"]]
+                story.primary_topic = str(primary_topic) if data["relevance"] else None
+                story.matched_topics = matched_topics
                 story.relevance_score = max(0.0, min(1.0, float(data["relevance_score"])))
                 story.summary = str(data["summary"]).strip()
                 story.why_it_matters = str(data["why_it_matters"]).strip()
