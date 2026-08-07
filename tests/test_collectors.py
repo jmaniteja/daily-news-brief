@@ -3,6 +3,7 @@ import json
 import responses
 
 from news_brief.collectors import collect_hn, collect_rss, fetch_article
+from news_brief.observability import SourceMetrics
 
 
 @responses.activate
@@ -42,3 +43,12 @@ def test_article_failure_falls_back():
     from datetime import datetime, timezone
     item = Story("x", "https://article.test/", "x", datetime.now(timezone.utc), excerpt="fallback")
     assert fetch_article(item) == "fallback"
+
+
+@responses.activate
+def test_metrics_account_for_hn_requests_and_article_fallback():
+    responses.add(responses.GET, "https://news.ycombinator.com/", body='<tr class="athing" id="42"><span class="titleline"><a href="https://article.test">Story</a></span></tr>')
+    responses.add(responses.GET, "https://hacker-news.firebaseio.com/v0/item/42.json", status=500)
+    metrics = SourceMetrics("Hacker News", "hacker_news")
+    assert collect_hn({"url": "https://news.ycombinator.com/", "limit": 5}, metrics=metrics) == []
+    assert metrics.request_count == 2 and metrics.http_statuses["500"] == 1 and metrics.errors

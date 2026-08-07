@@ -1,4 +1,5 @@
-from datetime import date, datetime, timezone
+import json
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -60,6 +61,39 @@ def test_same_day_rerun_preserves_existing_brief(monkeypatch, tmp_path):
     monkeypatch.setattr("news_brief.generator.collect_all", lambda _: (_ for _ in ()).throw(AssertionError("must not collect")))
     assert generate(config(), tmp_path, date.today()) == output
     assert output.read_text() == "existing edition"
+
+
+def test_successful_run_writes_public_safe_report_and_source_health(monkeypatch, tmp_path):
+    story = candidate("https://works.test")
+    story.source_name = "Test"
+    monkeypatch.setattr("news_brief.generator.collect_all", lambda _: ([story], []))
+    monkeypatch.setattr("news_brief.generator.fetch_article", lambda story: "private article body")
+
+    def analyze(_, story, __):
+        story.relevance, story.primary_topic, story.matched_topics = True, "ai-news", ["ai-news"]
+        story.summary, story.why_it_matters = "Summary.", "Impact."
+        return story
+
+    monkeypatch.setattr("news_brief.generator.CloudflareAnalyzer.analyze", analyze)
+    monkeypatch.setenv("CLOUDFLARE_ACCOUNT_ID", "very-secret-account")
+    monkeypatch.setenv("CLOUDFLARE_API_TOKEN", "very-secret-token")
+    output = generate(config(), tmp_path, date.today())
+    report = json.loads((tmp_path / "reports" / f"{date.today().isoformat()}.json").read_text())
+    assert report["schema_version"] == 1 and report["run"]["outcome"] == "published"
+    assert report["totals"]["selected"] == 1
+    assert "## Source health" in output.read_text()
+    serialized = json.dumps(report)
+    assert "private article body" not in serialized and "very-secret-token" not in serialized
+
+
+def test_report_prunes_files_older_than_ninety_days(monkeypatch, tmp_path):
+    old = date.today() - timedelta(days=91)
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    (reports / f"{old.isoformat()}.json").write_text("{}")
+    monkeypatch.setattr("news_brief.generator.collect_all", lambda _: ([], []))
+    generate(config(), tmp_path, date.today())
+    assert not (reports / f"{old.isoformat()}.json").exists()
 
 
 def test_shortlist_filters_locally_and_caps_candidates():

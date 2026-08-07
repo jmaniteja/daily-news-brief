@@ -29,6 +29,7 @@ class Story:
     relevance_score: float = 0
     summary: str = ""
     why_it_matters: str = ""
+    source_name: str | None = None
 
 
 def load_config(path: Path) -> dict:
