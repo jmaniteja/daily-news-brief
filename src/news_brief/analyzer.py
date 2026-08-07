@@ -20,10 +20,10 @@ class CloudflareAnalyzer:
     def _session() -> requests.Session:
         session = requests.Session()
         retry = Retry(
-            total=3,
-            connect=3,
-            read=3,
-            status=3,
+            total=1,
+            connect=1,
+            read=1,
+            status=1,
             backoff_factor=1,
             status_forcelist=(429, 500, 502, 503, 504),
             allowed_methods=frozenset({"POST"}),
@@ -41,7 +41,7 @@ class CloudflareAnalyzer:
         last_error = None
         for attempt in range(2):
             try:
-                response = self.session.post(self.url, timeout=(10, 60),
+                response = self.session.post(self.url, timeout=(10, 30),
                     headers={"Authorization": f"Bearer {self.token}", "Content-Type": "application/json"},
                     json={"model": self.model, "temperature": 0.1, "response_format": {"type": "json_object"},
                           "messages": [{"role": "system", "content": "You are a precise news editor."},
@@ -58,7 +58,11 @@ class CloudflareAnalyzer:
                 story.summary = str(data["summary"]).strip()
                 story.why_it_matters = str(data["why_it_matters"]).strip()
                 return story
-            except (requests.RequestException, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            except requests.RequestException as exc:
+                # The configured adapter has already retried transient network
+                # failures. Do not multiply those attempts at this layer.
+                raise RuntimeError(f"Cloudflare analysis failed for {story.url}: {exc}") from exc
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
                 last_error = exc
                 if attempt == 0:
                     time.sleep(1)

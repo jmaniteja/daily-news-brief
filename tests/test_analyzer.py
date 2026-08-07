@@ -35,6 +35,6 @@ def test_cloudflare_retries_malformed(monkeypatch):
 def test_default_session_retries_transient_posts():
     analyzer = CloudflareAnalyzer("acct", "token", "model")
     retry = analyzer.session.get_adapter("https://").max_retries
-    assert retry.total == 3
+    assert retry.total == 1
     assert retry.status_forcelist == (429, 500, 502, 503, 504)
     assert "POST" in retry.allowed_methods
