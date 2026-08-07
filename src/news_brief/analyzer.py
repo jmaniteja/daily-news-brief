@@ -8,6 +8,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from .core import Story
+from .observability import SourceMetrics
 
 
 class CloudflareAnalyzer:
@@ -32,7 +33,7 @@ class CloudflareAnalyzer:
         session.mount("https://", HTTPAdapter(max_retries=retry))
         return session
 
-    def analyze(self, story: Story, config: dict) -> Story:
+    def analyze(self, story: Story, config: dict, metrics: SourceMetrics | None = None) -> Story:
         topics = [{
             "id": topic["id"],
             "name": topic["name"],
@@ -47,6 +48,7 @@ class CloudflareAnalyzer:
         last_error = None
         for attempt in range(2):
             try:
+                if metrics: metrics.analysis_attempts += 1
                 response = self.session.post(self.url, timeout=(10, 30),
                     headers={"Authorization": f"Bearer {self.token}", "Content-Type": "application/json"},
                     json={"model": self.model, "temperature": 0.1, "response_format": {"type": "json_object"},
@@ -73,13 +75,20 @@ class CloudflareAnalyzer:
                 story.relevance_score = max(0.0, min(1.0, float(data["relevance_score"])))
                 story.summary = str(data["summary"]).strip()
                 story.why_it_matters = str(data["why_it_matters"]).strip()
+                if metrics:
+                    metrics.analysis_successes += 1
+                    if not story.relevance: metrics.analysis_irrelevant += 1
                 return story
             except requests.RequestException as exc:
                 # The configured adapter has already retried transient network
                 # failures. Do not multiply those attempts at this layer.
+                if metrics: metrics.analysis_failures += 1; metrics.error(exc)
                 raise RuntimeError(f"Cloudflare analysis failed for {story.url}: {exc}") from exc
             except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
                 last_error = exc
+                if metrics: metrics.analysis_malformed += 1
                 if attempt == 0:
+                    if metrics: metrics.analysis_retries += 1
                     time.sleep(1)
+        if metrics: metrics.analysis_failures += 1; metrics.error(last_error or ValueError("analysis failed"))
         raise RuntimeError(f"Cloudflare analysis failed for {story.url}: {last_error}")

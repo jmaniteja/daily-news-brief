@@ -128,7 +128,11 @@ def _topic_sections(metadata: dict, body: str) -> tuple[str, list[dict]]:
         return "", [{"id": "ai-news", "name": "AI News", "description": "", "content": content, "count": count}]
 
     heading_indexes = [index for index, line in enumerate(lines) if re.fullmatch(r"## .+", line)]
-    prelude_end = heading_indexes[0] if heading_indexes else len(lines)
+    configured_names = {str(topic.get("name", "Topic")) for topic in configured}
+    # Operational notes such as "Source health" are not tabs. Keep them in
+    # the brief prelude even though they use a Markdown section heading.
+    first_topic = next((index for index in heading_indexes if lines[index][3:].strip() in configured_names), None)
+    prelude_end = first_topic if first_topic is not None else len(lines)
     prelude = "\n".join(lines[:prelude_end]).strip()
     found = {}
     for position, start in enumerate(heading_indexes):

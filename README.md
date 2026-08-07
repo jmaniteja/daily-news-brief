@@ -9,7 +9,13 @@ A small Python pipeline that collects stories about AI, coding agents, agentic s
 3. Adjust the topic names, descriptions, keywords, exclusions, sources, limits, or `cloudflare_model` in `config.yml`.
 4. Run `PYTHONPATH=src python -m news_brief.cli validate`, then `generate`, then `build`.
 
-An explicit date can be generated with `generate --date YYYY-MM-DD`. Building never accesses the network. Generated Markdown is stored in `briefs/`, durable URL history in `state.json`, and the disposable website in `site/`.
+An explicit date can be generated with `generate --date YYYY-MM-DD`. Building never accesses the network. Generated Markdown is stored in `briefs/`, durable URL history in `state.json`, daily public-safe source reports in `reports/`, and the disposable website in `site/`.
+
+## Source reports
+
+Every successful generation writes `reports/YYYY-MM-DD.json` (schema version 1) and retains the latest 90 days. Each report has run metadata and a configuration hash, aggregate totals, and one record per configured source. A source record tracks collection requests/statuses and discovered, malformed, deduplicated, shortlisted, fetched, analyzed, and selected counts. It also records aggregate fallback/retry/failure counters and a short error category, never article text, URLs, response bodies, or credentials.
+
+Compare `discovered → shortlisted → selected` over time to spot source quality changes. High excerpt fallbacks or article failures point to extraction/access trouble; high analysis failures or malformed/retry counts point to Cloudflare analysis; an `error` source can be an isolated outage while the rest of a brief still publishes. The Markdown edition includes a compact Source health summary; the JSON reports are the detailed diagnostic record.
 
 ## GitHub Pages
 
