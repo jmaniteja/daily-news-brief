@@ -46,12 +46,13 @@ def shortlist(stories: list[Story], topics: list[dict], limit: int, now: datetim
     for story in stories:
         text = f"{story.title} {story.excerpt}".lower()
         matches = sum(_matches_phrase(text, keyword) for keyword in keywords)
-        if not matches:
+        hinted = bool(story.topic_hints)
+        if not matches and not hinted:
             continue
         age_hours = max(0, (now - story.published.astimezone(timezone.utc)).total_seconds() / 3600)
         recency = max(0, 1 - age_hours / 72)
         engagement = min(1.0, ((story.hn_score or 0) + 2 * (story.hn_comments or 0)) / 500)
-        scored.append((matches + recency * .25 + engagement * .5, story))
+        scored.append((matches + (1 if hinted else 0) + recency * .25 + engagement * .5, story))
     return [story for _, story in sorted(scored, key=lambda item: item[0], reverse=True)[:limit]]
 
 
@@ -159,13 +160,14 @@ def _write_report(root: Path, day: date, now: datetime, config: dict, metrics: l
     return path
 
 
-def generate(config: dict, root: Path, day: date | None = None, now: datetime | None = None) -> Path:
+def generate(config: dict, root: Path, day: date | None = None, now: datetime | None = None,
+             force: bool = False) -> Path:
     now = now or datetime.now(timezone.utc)
     day = day or now.date()
     output = root / "briefs" / f"{day.isoformat()}.md"
     # A manual same-day rerun should rebuild/deploy the existing edition rather
     # than replace it after state deduplication.
-    if output.exists():
+    if output.exists() and not force:
         return output
 
     state = State(root / "state.json")
@@ -178,14 +180,15 @@ def generate(config: dict, root: Path, day: date | None = None, now: datetime | 
         stories, errors, metrics = collected
     metric_by_name = {metric.name: metric for metric in metrics}
     cutoff = datetime.combine(day, time.min, tzinfo=timezone.utc) - timedelta(hours=int(config.get("lookback_hours", 48)))
-    recent = [story for story in stories if story.published >= cutoff]
+    window_end = datetime.combine(day + timedelta(days=1), time.min, tzinfo=timezone.utc)
+    recent = [story for story in stories if cutoff <= story.published < window_end]
     unique = deduplicate(recent)
     unique_ids = {id(story) for story in unique}
     for story in recent:
         if id(story) not in unique_ids:
             metric = metric_by_name.get(story.source_name or story.publisher)
             if metric: metric.entries_deduplicated += 1
-    unseen = state.unseen(unique)
+    unseen = unique if force else state.unseen(unique)
     candidates = shortlist(unseen, config["topics"], int(config["max_candidates"]), now)
     for story in candidates:
         metric = metric_by_name.get(story.source_name or story.publisher)

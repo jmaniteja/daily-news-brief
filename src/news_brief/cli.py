@@ -15,6 +15,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     gen = sub.add_parser("generate")
     gen.add_argument("--date", type=date.fromisoformat)
+    gen.add_argument("--force", action="store_true", help="replace an existing edition for the selected date")
     sub.add_parser("build")
     sub.add_parser("validate")
     args = parser.parse_args(argv)
@@ -25,7 +26,7 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "build":
         print(build_site(root))
     else:
-        print(generate(config, root, args.date))
+        print(generate(config, root, args.date, force=args.force))
     return 0
 
 

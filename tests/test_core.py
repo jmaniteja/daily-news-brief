@@ -40,3 +40,14 @@ def test_load_config_normalizes_legacy_topic(tmp_path):
     config = load_config(path)
     assert config["topics"][0]["id"] == "ai-news"
     assert config["max_candidates"] == 20
+
+
+def test_load_config_rejects_unknown_source_topic_hint(tmp_path):
+    path = tmp_path / "config.yml"
+    path.write_text("""topic: AI\nkeywords: [agents]\nexclude: []\ntimezone: UTC\nmax_stories: 5\ncloudflare_model: model\nsources:\n  - {name: Test, type: rss, url: 'https://feed.test', limit: 5, topic_hints: [unknown]}\n""")
+    try:
+        load_config(path)
+    except ValueError as error:
+        assert "invalid topic_hints" in str(error)
+    else:
+        raise AssertionError("expected invalid topic hint")

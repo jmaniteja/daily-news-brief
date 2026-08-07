@@ -16,6 +16,14 @@ def test_rss_skips_partial_entries_and_parses_html():
 
 
 @responses.activate
+def test_rss_preserves_source_topic_hints():
+    url = "https://feed.test/releases"
+    responses.add(responses.GET, url, body='''<rss><channel><item><title>v1.0</title><link>https://example.test/release</link></item></channel></rss>''')
+    result = collect_rss({"url": url, "name": "Project", "limit": 5, "topic_hints": ["ai-coding"]})
+    assert result[0].topic_hints == ["ai-coding"]
+
+
+@responses.activate
 def test_malformed_feed_fails():
     url = "https://feed.test/rss"
     responses.add(responses.GET, url, body="not a feed")

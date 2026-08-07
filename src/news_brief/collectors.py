@@ -45,7 +45,7 @@ def collect_rss(source: dict, session=requests, metrics: SourceMetrics | None = 
         stories.append(Story(title=title.strip(), url=link, publisher=source["name"],
             published=_date(entry.get("published") or entry.get("updated")),
             excerpt=BeautifulSoup(entry.get("summary", ""), "html.parser").get_text(" ", strip=True),
-            source_name=source["name"]))
+            source_name=source["name"], topic_hints=list(source.get("topic_hints", []))))
     if metrics: metrics.collection_duration_ms += round((time.monotonic() - started) * 1000)
     return stories
 
@@ -75,7 +75,8 @@ def collect_hn(source: dict, session=requests, metrics: SourceMetrics | None = N
             stories.append(Story(title=link.get_text(strip=True), url=url,
                 publisher="Hacker News", published=datetime.fromtimestamp(item.get("time", time.time()), timezone.utc),
                 hn_score=item.get("score", 0), hn_comments=item.get("descendants", 0),
-                discussion_url=f"https://news.ycombinator.com/item?id={story_id}", source_name=source.get("name", "Hacker News")))
+                discussion_url=f"https://news.ycombinator.com/item?id={story_id}", source_name=source.get("name", "Hacker News"),
+                topic_hints=list(source.get("topic_hints", []))))
         except Exception as exc:
             if metrics: metrics.entries_malformed += 1; metrics.error(exc)
             continue

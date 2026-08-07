@@ -101,3 +101,50 @@ sources:
     type: rss
     url: https://developers.cloudflare.com/changelog/rss/workers-ai.xml
     limit: 10
+  # Code-first project updates: release notes can have version-only titles, so
+  # topic_hints ensure they reach the relevance check.
+  - name: Aider Releases
+    type: rss
+    url: https://github.com/Aider-AI/aider/releases.atom
+    limit: 5
+    topic_hints: [ai-coding, token-efficiency]
+  - name: Anthropic Skills Releases
+    type: rss
+    url: https://github.com/anthropics/skills/releases.atom
+    limit: 5
+    topic_hints: [ai-coding, token-efficiency]
+  - name: Anthropic Claude Cookbooks Releases
+    type: rss
+    url: https://github.com/anthropics/claude-cookbooks/releases.atom
+    limit: 5
+    topic_hints: [ai-coding, agentic-systems, token-efficiency]
+  - name: LangGraph Releases
+    type: rss
+    url: https://github.com/langchain-ai/langgraph/releases.atom
+    limit: 5
+    topic_hints: [agentic-systems]
+  - name: OpenAI Agents SDK Releases
+    type: rss
+    url: https://github.com/openai/openai-agents-python/releases.atom
+    limit: 5
+    topic_hints: [agentic-systems]
+  - name: Microsoft Agent Framework Releases
+    type: rss
+    url: https://github.com/microsoft/agent-framework/releases.atom
+    limit: 5
+    topic_hints: [agentic-systems]
+  - name: MCP Servers Releases
+    type: rss
+    url: https://github.com/modelcontextprotocol/servers/releases.atom
+    limit: 5
+    topic_hints: [ai-coding, agentic-systems]
+  - name: OpenHands Releases
+    type: rss
+    url: https://github.com/OpenHands/OpenHands/releases.atom
+    limit: 5
+    topic_hints: [ai-coding, agentic-systems]
+  - name: OpenAI Codex Releases
+    type: rss
+    url: https://github.com/openai/codex/releases.atom
+    limit: 5
+    topic_hints: [ai-coding, token-efficiency]

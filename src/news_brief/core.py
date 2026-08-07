@@ -30,6 +30,7 @@ class Story:
     summary: str = ""
     why_it_matters: str = ""
     source_name: str | None = None
+    topic_hints: list[str] = field(default_factory=list)
 
 
 def load_config(path: Path) -> dict:
@@ -77,6 +78,9 @@ def load_config(path: Path) -> dict:
             raise ValueError("Each source requires name, type, url, and limit")
         if source["type"] not in {"rss", "hacker_news"}:
             raise ValueError(f"Unsupported source type: {source['type']}")
+        hints = source.setdefault("topic_hints", [])
+        if not isinstance(hints, list) or any(str(hint) not in topic_ids for hint in hints):
+            raise ValueError(f"Source {source['name']} has invalid topic_hints")
     return data
 
 

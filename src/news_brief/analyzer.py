@@ -42,8 +42,9 @@ class CloudflareAnalyzer:
         } for topic in config["topics"]]
         prompt = {
             "topics": topics, "exclude": config["exclude"],
-            "article": {"title": story.title, "publisher": story.publisher, "text": (story.content or story.excerpt)[:12000]},
-            "instruction": "Return only JSON with relevance (boolean), primary_topic (an exact topic id, or null when irrelevant), matched_topics (array of exact topic ids), relevance_score (0..1), summary (2 factual sentences), and why_it_matters (1 sentence). Choose one primary topic for every relevant article.",
+            "article": {"title": story.title, "publisher": story.publisher, "text": (story.content or story.excerpt)[:12000],
+                        "source_topic_hints": story.topic_hints},
+            "instruction": "Source topic hints are only discovery hints, not evidence of relevance. Return only JSON with relevance (boolean), primary_topic (an exact topic id, or null when irrelevant), matched_topics (array of exact topic ids), relevance_score (0..1), summary (2 factual sentences), and why_it_matters (1 sentence). Choose one primary topic for every relevant article.",
         }
         last_error = None
         for attempt in range(2):

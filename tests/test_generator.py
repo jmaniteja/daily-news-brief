@@ -63,6 +63,16 @@ def test_same_day_rerun_preserves_existing_brief(monkeypatch, tmp_path):
     assert output.read_text() == "existing edition"
 
 
+def test_force_rebuild_replaces_existing_brief(monkeypatch, tmp_path):
+    briefs = tmp_path / "briefs"
+    briefs.mkdir()
+    output = briefs / f"{date.today().isoformat()}.md"
+    output.write_text("existing edition")
+    monkeypatch.setattr("news_brief.generator.collect_all", lambda _: ([], []))
+    assert generate(config(), tmp_path, date.today(), force=True) == output
+    assert "Daily AI News Brief" in output.read_text()
+
+
 def test_successful_run_writes_public_safe_report_and_source_health(monkeypatch, tmp_path):
     story = candidate("https://works.test")
     story.source_name = "Test"
@@ -102,6 +112,21 @@ def test_shortlist_filters_locally_and_caps_candidates():
     stories.append(Story("Unrelated gardening", "https://other.test", "Test", now, excerpt="Tomatoes"))
     result = shortlist(stories, config()["topics"], 1, now)
     assert len(result) == 1 and "other.test" not in result[0].url
+
+
+def test_shortlist_includes_generic_release_from_a_topic_hinted_source():
+    now = datetime.now(timezone.utc)
+    release = Story("v1.2.3", "https://project.test/releases/1.2.3", "Project", now,
+                    excerpt="Maintenance release", topic_hints=["ai-coding"])
+    assert shortlist([release], config()["topics"], 1, now) == [release]
+
+
+def test_historical_generation_excludes_stories_after_the_requested_day(monkeypatch, tmp_path):
+    day = date(2026, 8, 1)
+    future = Story("AI future", "https://future.test", "Test", datetime(2026, 8, 2, tzinfo=timezone.utc), excerpt="AI agents")
+    monkeypatch.setattr("news_brief.generator.collect_all", lambda _: ([future], []))
+    output = generate(config(), tmp_path, day, now=datetime(2026, 8, 7, tzinfo=timezone.utc))
+    assert "No qualifying stories" in output.read_text()
 
 
 def test_topic_selection_round_robins_across_interests():
