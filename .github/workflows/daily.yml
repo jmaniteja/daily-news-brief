@@ -2,6 +2,15 @@ name: Daily AI news brief
 
 on:
   workflow_dispatch:
+    inputs:
+      start_date:
+        description: "Optional first UTC date to generate (YYYY-MM-DD)"
+        required: false
+        type: string
+      end_date:
+        description: "Optional last UTC date to generate (YYYY-MM-DD); defaults to start_date"
+        required: false
+        type: string
   schedule:
     # GitHub cron is UTC. Two entries plus the timezone guard handle UK daylight saving.
     - cron: "0 6 * * *"
@@ -43,11 +52,28 @@ jobs:
         run: pytest
       - if: steps.gate.outputs.run == 'true'
         run: PYTHONPATH=src python -m news_brief.cli validate
-      - run: PYTHONPATH=src python -m news_brief.cli generate
+      - name: Generate daily brief or requested backfill
         if: steps.gate.outputs.run == 'true'
+        run: |
+          if [ -n "$BACKFILL_START" ]; then
+            BACKFILL_END="${BACKFILL_END:-$BACKFILL_START}"
+            if ! date -d "$BACKFILL_START" +%F >/dev/null || ! date -d "$BACKFILL_END" +%F >/dev/null || [ "$BACKFILL_START" \> "$BACKFILL_END" ]; then
+              echo "start_date and end_date must be YYYY-MM-DD, with start_date no later than end_date"
+              exit 1
+            fi
+            run_day="$BACKFILL_START"
+            while [ "$run_day" \< "$BACKFILL_END" ] || [ "$run_day" = "$BACKFILL_END" ]; do
+              PYTHONPATH=src python -m news_brief.cli generate --date "$run_day" --force
+              run_day="$(date -I -d "$run_day + 1 day")"
+            done
+          else
+            PYTHONPATH=src python -m news_brief.cli generate
+          fi
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          BACKFILL_START: ${{ inputs.start_date }}
+          BACKFILL_END: ${{ inputs.end_date }}
       - name: Commit brief and state
         if: steps.gate.outputs.run == 'true'
         run: |
