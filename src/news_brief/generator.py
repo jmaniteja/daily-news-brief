@@ -29,15 +29,16 @@ def render_markdown(day: date, stories: list, source_errors: list[str] | None = 
 def generate(config: dict, root: Path, day: date | None = None, now: datetime | None = None) -> Path:
     now = now or datetime.now(timezone.utc)
     day = day or now.date()
+    output = root / "briefs" / f"{day.isoformat()}.md"
+    # Preserve a published edition on same-day manual reruns. This also makes
+    # style-only Pages deployments fast and prevents transiently failed URLs
+    # from changing an edition that has already been published.
+    if output.exists():
+        return output
     state = State(root / "state.json")
     stories, errors = collect_all(config)
     cutoff = datetime.combine(day, time.min, tzinfo=timezone.utc) - timedelta(hours=int(config.get("lookback_hours", 48)))
     candidates = state.unseen(deduplicate([s for s in stories if s.published >= cutoff]))
-    output = root / "briefs" / f"{day.isoformat()}.md"
-    # A manual same-day rerun should rebuild/deploy the existing edition rather
-    # than replace it with a misleading no-news brief after state deduplication.
-    if not candidates and output.exists():
-        return output
     analyzed = []
     analysis_errors = []
     if candidates:

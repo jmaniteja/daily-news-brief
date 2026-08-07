@@ -54,6 +54,6 @@ def test_same_day_rerun_preserves_existing_brief(monkeypatch, tmp_path):
     briefs.mkdir()
     output = briefs / f"{date.today().isoformat()}.md"
     output.write_text("existing edition")
-    monkeypatch.setattr("news_brief.generator.collect_all", lambda _: ([], []))
+    monkeypatch.setattr("news_brief.generator.collect_all", lambda _: (_ for _ in ()).throw(AssertionError("must not collect")))
     assert generate(config(), tmp_path, date.today()) == output
     assert output.read_text() == "existing edition"
