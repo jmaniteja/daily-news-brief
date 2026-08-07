@@ -1,27 +1,103 @@
-topic: Artificial intelligence
-keywords:
-  - AI agents
-  - reasoning models
+topics:
+  - id: ai-news
+    name: AI News
+    description: Important model, research, product, safety, and industry developments in artificial intelligence.
+    keywords:
+      - artificial intelligence
+      - AI
+      - LLM
+      - foundation model
+      - reasoning model
+      - GPT
+      - Claude
+      - Gemini
+      - machine learning
+  - id: ai-coding
+    name: AI Coding
+    description: Practical coding-agent workflows, prompts, skills, plugins, MCP tools, IDEs, and command-line techniques.
+    keywords:
+      - coding agent
+      - AI coding
+      - agent skill
+      - AGENTS.md
+      - Claude Code
+      - Codex
+      - GitHub Copilot
+      - Gemini CLI
+      - MCP
+      - model context protocol
+      - subagent
+  - id: agentic-systems
+    name: Agentic Systems
+    description: Architectures for reliable agents, including orchestration, tools, memory, evaluation, guardrails, and sandboxes.
+    keywords:
+      - AI agent
+      - agentic system
+      - agent orchestration
+      - multi-agent
+      - tool calling
+      - agent memory
+      - agent evaluation
+      - agent observability
+      - guardrails
+      - sandbox
+      - LangGraph
+  - id: token-efficiency
+    name: Token Efficiency
+    description: Context engineering, caching, compaction, model routing, latency, and techniques that reduce inference cost.
+    keywords:
+      - token efficiency
+      - token usage
+      - context engineering
+      - context compaction
+      - context window
+      - prompt caching
+      - model routing
+      - inference cost
+      - inference efficiency
+      - latency
 exclude:
   - cryptocurrency
 timezone: Europe/London
-max_stories: 10
+max_stories: 16
+max_stories_per_topic: 4
+max_candidates: 30
 lookback_hours: 48
 cloudflare_model: "@cf/zai-org/glm-4.7-flash"
 sources:
   - name: OpenAI News
     type: rss
     url: https://openai.com/news/rss.xml
-    limit: 20
+    limit: 15
   - name: Hacker News
     type: hacker_news
     url: https://news.ycombinator.com/
     limit: 30
-  - name: GitHub Blog
+  - name: GitHub AI & ML
     type: rss
-    url: https://github.blog/feed/
-    limit: 20
+    url: https://github.blog/ai-and-ml/feed/
+    limit: 15
   - name: GitHub Changelog
     type: rss
     url: https://github.blog/changelog/feed/
-    limit: 20
+    limit: 15
+  - name: Google Developers
+    type: rss
+    url: https://developers.googleblog.com/feeds/posts/default
+    limit: 12
+  - name: Microsoft Developers AI
+    type: rss
+    url: https://devblogs.microsoft.com/ai/feed/
+    limit: 12
+  - name: LangChain Blog
+    type: rss
+    url: https://www.langchain.com/blog/rss.xml
+    limit: 12
+  - name: Cloudflare Agents
+    type: rss
+    url: https://developers.cloudflare.com/changelog/rss/agents.xml
+    limit: 10
+  - name: Cloudflare Workers AI
+    type: rss
+    url: https://developers.cloudflare.com/changelog/rss/workers-ai.xml
+    limit: 10

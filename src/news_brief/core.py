@@ -24,6 +24,7 @@ class Story:
     hn_comments: int | None = None
     discussion_url: str | None = None
     relevance: bool = False
+    primary_topic: str | None = None
     matched_topics: list[str] = field(default_factory=list)
     relevance_score: float = 0
     summary: str = ""
@@ -32,14 +33,44 @@ class Story:
 
 def load_config(path: Path) -> dict:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    required = {"topic", "keywords", "exclude", "timezone", "max_stories", "cloudflare_model", "sources"}
+    required = {"exclude", "timezone", "max_stories", "cloudflare_model", "sources"}
     missing = required - set(data or {})
     if missing:
         raise ValueError(f"Missing configuration keys: {', '.join(sorted(missing))}")
+    if "topics" not in data:
+        if not {"topic", "keywords"} <= set(data):
+            raise ValueError("Configuration requires topics, or the legacy topic and keywords keys")
+        data["topics"] = [{
+            "id": "ai-news",
+            "name": str(data["topic"]),
+            "description": "",
+            "keywords": data["keywords"],
+        }]
+    if not isinstance(data["topics"], list) or not data["topics"]:
+        raise ValueError("topics must be a non-empty list")
+    topic_ids = set()
+    for topic in data["topics"]:
+        if not {"id", "name", "keywords"} <= set(topic):
+            raise ValueError("Each topic requires id, name, and keywords")
+        topic_id = str(topic["id"])
+        if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", topic_id):
+            raise ValueError(f"Invalid topic id: {topic_id}")
+        if topic_id in topic_ids:
+            raise ValueError(f"Duplicate topic id: {topic_id}")
+        if not isinstance(topic["keywords"], list) or not topic["keywords"]:
+            raise ValueError(f"Topic {topic_id} requires at least one keyword")
+        topic.setdefault("description", "")
+        topic_ids.add(topic_id)
     if not isinstance(data["sources"], list) or not data["sources"]:
         raise ValueError("sources must be a non-empty list")
     if not 1 <= int(data["max_stories"]) <= 50:
         raise ValueError("max_stories must be between 1 and 50")
+    data.setdefault("max_stories_per_topic", data["max_stories"])
+    if not 1 <= int(data["max_stories_per_topic"]) <= int(data["max_stories"]):
+        raise ValueError("max_stories_per_topic must be between 1 and max_stories")
+    data.setdefault("max_candidates", max(20, int(data["max_stories"]) * 2))
+    if not 1 <= int(data["max_candidates"]) <= 100:
+        raise ValueError("max_candidates must be between 1 and 100")
     for source in data["sources"]:
         if not {"name", "type", "url", "limit"} <= set(source):
             raise ValueError("Each source requires name, type, url, and limit")

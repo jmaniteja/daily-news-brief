@@ -4,18 +4,19 @@
 
 Build a Python-based generator that runs daily at 07:00 Europe/London in GitHub Actions, discovers AI-related stories from the configured sources, uses Cloudflare Workers AI to filter and summarize them, commits a dated Markdown brief, and deploys a responsive static archive to GitHub Pages.
 
-Initial sources:
+Core sources:
 
 - OpenAI News via `https://openai.com/news/rss.xml`
 - Hacker News front page, including linked article content and HN engagement
-- GitHub Blog via `https://github.blog/feed/`
+- GitHub AI & ML via `https://github.blog/ai-and-ml/feed/`
 - GitHub Changelog via `https://github.blog/changelog/feed/`
+- Google Developers, Microsoft Developers AI, LangChain, and Cloudflare Agents/Workers AI feeds
 
 ## Implementation
 
 - Add a YAML configuration containing:
-  - Topic: `Artificial intelligence`
-  - Keywords: `AI agents`, `reasoning models`
+  - Tabs for `AI News`, `AI Coding`, `Agentic Systems`, and `Token Efficiency`
+  - Per-topic descriptions and discovery keywords
   - Exclusion: `cryptocurrency`
   - Source URLs, source type, per-source limits, timezone, maximum 10 stories, and Cloudflare model name.
 - Implement an RSS/Atom collector for OpenAI and GitHub.
@@ -23,7 +24,8 @@ Initial sources:
 - Fetch readable article text with timeouts, response-size limits, a descriptive user agent, retries, and per-source failure isolation. Do not bypass paywalls, authentication, robots restrictions, or anti-bot controls; fall back to feed/title excerpts when full text is unavailable.
 - Normalize canonical URLs, remove duplicate stories across sources, and maintain a committed state file containing processed URLs and the last successful run. Bootstrap the first run with a 48-hour lookback and prune state older than 90 days.
 - Send bounded article text to Cloudflare Workers AI through its OpenAI-compatible REST endpoint. Default to `@cf/zai-org/glm-4.7-flash`, configurable without code changes; Cloudflare currently recommends this model family for efficient long-form processing. Validate structured JSON output and retry malformed or transient responses once.
-- Have the model return relevance, matched topics, relevance score, a concise factual summary, and “why it matters.” Rank qualifying stories by relevance, recency, and HN engagement, then keep at most 10.
+- Locally shortlist at most 30 title/excerpt matches before article fetches and model calls.
+- Have the model return relevance, one primary tab, matched topics, relevance score, a concise factual summary, and “why it matters.” Rank qualifying stories by relevance, recency, and HN engagement, then select them across topics with per-tab and total limits.
 - Write `briefs/YYYY-MM-DD.md` with front matter and grouped story entries containing title, publisher, date, source link, summary, relevance explanation, and optional HN metadata.
 - Generate a no-news Markdown brief when collection succeeds but no items qualify. If every source fails or Cloudflare processing fails, fail the workflow without advancing state or publishing a misleading empty brief.
 - Render the Markdown archive into static HTML:
@@ -31,7 +33,7 @@ Initial sources:
   - Dated archive pages
   - Archive navigation
   - Responsive, accessible CSS
-  - No client-side application or JavaScript dependency
+  - Hash-addressable, keyboard-accessible topic tabs with a small progressive-enhancement script and a no-JavaScript fallback
   - Escaped/sanitized generated content and visible attribution links
 
 ## Automation and Interfaces
@@ -60,7 +62,7 @@ Initial sources:
 - Verify partial source failure still produces a brief while complete collection failure does not.
 - Verify empty days create an explicit no-news brief.
 - Verify Markdown contains required attribution and the generated HTML escapes unsafe content.
-- Verify homepage selection, archive ordering, navigation, responsive markup, and deterministic rebuilds.
+- Verify homepage selection, archive ordering, tab/hash navigation, keyboard semantics, responsive markup, and deterministic rebuilds.
 - Run an end-to-end fixture build without external network calls.
 
 ## Assumptions

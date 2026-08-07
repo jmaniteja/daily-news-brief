@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from news_brief.core import State, Story, canonical_url, deduplicate, rank
+from news_brief.core import State, Story, canonical_url, deduplicate, load_config, rank
 
 
 def story(url="https://example.com/a", **kw):
@@ -32,3 +32,11 @@ def test_rank_filters_and_uses_relevance():
     high = story("https://x/high", relevance=True, relevance_score=.9)
     irrelevant = story("https://x/no", relevance=False, relevance_score=1)
     assert rank([low, irrelevant, high], datetime.now(timezone.utc)) == [high, low]
+
+
+def test_load_config_normalizes_legacy_topic(tmp_path):
+    path = tmp_path / "config.yml"
+    path.write_text("""topic: AI\nkeywords: [agents]\nexclude: []\ntimezone: UTC\nmax_stories: 5\ncloudflare_model: model\nsources:\n  - {name: Test, type: rss, url: 'https://feed.test', limit: 5}\n""")
+    config = load_config(path)
+    assert config["topics"][0]["id"] == "ai-news"
+    assert config["max_candidates"] == 20
