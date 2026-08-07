@@ -33,6 +33,8 @@ def generate(config: dict, root: Path, day: date | None = None, now: datetime | 
     stories, errors = collect_all(config)
     cutoff = datetime.combine(day, time.min, tzinfo=timezone.utc) - timedelta(hours=int(config.get("lookback_hours", 48)))
     candidates = state.unseen(deduplicate([s for s in stories if s.published >= cutoff]))
+    analyzed = []
+    analysis_errors = []
     if candidates:
         account, token = os.environ.get("CLOUDFLARE_ACCOUNT_ID"), os.environ.get("CLOUDFLARE_API_TOKEN")
         if not account or not token:
@@ -40,10 +42,15 @@ def generate(config: dict, root: Path, day: date | None = None, now: datetime | 
         analyzer = CloudflareAnalyzer(account, token, config["cloudflare_model"])
         for story in candidates:
             story.content = fetch_article(story)
-            analyzer.analyze(story, config)
-    selected = rank(candidates, now)[: int(config["max_stories"])]
+            try:
+                analyzed.append(analyzer.analyze(story, config))
+            except RuntimeError as exc:
+                analysis_errors.append(str(exc))
+        if not analyzed:
+            raise RuntimeError("Cloudflare could not analyze any candidate: " + "; ".join(analysis_errors))
+    selected = rank(analyzed, now)[: int(config["max_stories"])]
     output = root / "briefs" / f"{day.isoformat()}.md"
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(render_markdown(day, selected, errors), encoding="utf-8")
-    state.commit(candidates, now)
+    state.commit(analyzed, now)
     return output

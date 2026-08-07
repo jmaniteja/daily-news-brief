@@ -4,14 +4,33 @@ import json
 import time
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from .core import Story
 
 
 class CloudflareAnalyzer:
-    def __init__(self, account_id: str, token: str, model: str, session=requests):
+    def __init__(self, account_id: str, token: str, model: str, session=None):
         self.url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1/chat/completions"
-        self.token, self.model, self.session = token, model, session
+        self.token, self.model = token, model
+        self.session = session or self._session()
+
+    @staticmethod
+    def _session() -> requests.Session:
+        session = requests.Session()
+        retry = Retry(
+            total=3,
+            connect=3,
+            read=3,
+            status=3,
+            backoff_factor=1,
+            status_forcelist=(429, 500, 502, 503, 504),
+            allowed_methods=frozenset({"POST"}),
+            respect_retry_after_header=True,
+        )
+        session.mount("https://", HTTPAdapter(max_retries=retry))
+        return session
 
     def analyze(self, story: Story, config: dict) -> Story:
         prompt = {
@@ -22,7 +41,7 @@ class CloudflareAnalyzer:
         last_error = None
         for attempt in range(2):
             try:
-                response = self.session.post(self.url, timeout=45,
+                response = self.session.post(self.url, timeout=(10, 60),
                     headers={"Authorization": f"Bearer {self.token}", "Content-Type": "application/json"},
                     json={"model": self.model, "temperature": 0.1, "response_format": {"type": "json_object"},
                           "messages": [{"role": "system", "content": "You are a precise news editor."},
