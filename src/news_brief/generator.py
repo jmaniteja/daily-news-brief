@@ -33,6 +33,11 @@ def generate(config: dict, root: Path, day: date | None = None, now: datetime | 
     stories, errors = collect_all(config)
     cutoff = datetime.combine(day, time.min, tzinfo=timezone.utc) - timedelta(hours=int(config.get("lookback_hours", 48)))
     candidates = state.unseen(deduplicate([s for s in stories if s.published >= cutoff]))
+    output = root / "briefs" / f"{day.isoformat()}.md"
+    # A manual same-day rerun should rebuild/deploy the existing edition rather
+    # than replace it with a misleading no-news brief after state deduplication.
+    if not candidates and output.exists():
+        return output
     analyzed = []
     analysis_errors = []
     if candidates:
@@ -49,7 +54,6 @@ def generate(config: dict, root: Path, day: date | None = None, now: datetime | 
         if not analyzed:
             raise RuntimeError("Cloudflare could not analyze any candidate: " + "; ".join(analysis_errors))
     selected = rank(analyzed, now)[: int(config["max_stories"])]
-    output = root / "briefs" / f"{day.isoformat()}.md"
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(render_markdown(day, selected, errors), encoding="utf-8")
     state.commit(analyzed, now)

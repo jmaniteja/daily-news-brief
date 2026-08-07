@@ -47,3 +47,13 @@ def test_complete_analysis_failure_aborts_without_output_or_state(monkeypatch, t
         generate(config(), tmp_path, date.today())
     assert not (tmp_path / "state.json").exists()
     assert not (tmp_path / "briefs").exists()
+
+
+def test_same_day_rerun_preserves_existing_brief(monkeypatch, tmp_path):
+    briefs = tmp_path / "briefs"
+    briefs.mkdir()
+    output = briefs / f"{date.today().isoformat()}.md"
+    output.write_text("existing edition")
+    monkeypatch.setattr("news_brief.generator.collect_all", lambda _: ([], []))
+    assert generate(config(), tmp_path, date.today()) == output
+    assert output.read_text() == "existing edition"

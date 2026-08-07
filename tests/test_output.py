@@ -17,6 +17,10 @@ def test_empty_brief_and_site_is_deterministic_and_escaped(tmp_path):
     assert (tmp_path / "site/index.html").read_text() == first
     assert "<script>" not in first and "&lt;script&gt;" in first
     assert 'name="viewport"' in first and "archive.html" in first
+    assert 'href="assets/style.css"' in first
+    assert 'href="index.html"' in first
+    assert 'href="/assets/style.css"' not in first
+    assert "prefers-color-scheme:dark" in (tmp_path / "site/assets/style.css").read_text()
 
 
 def test_markdown_has_attribution_and_hn_metadata():
