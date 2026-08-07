@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "daily-news-brief"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "beautifulsoup4==4.13.4",
+  "bleach==6.2.0",
+  "feedparser==6.0.11",
+  "Markdown==3.8.2",
+  "PyYAML==6.0.2",
+  "requests==2.32.4",
+]
+
+[project.optional-dependencies]
+test = ["pytest==8.4.1", "responses==0.25.7"]
+
+[project.scripts]
+news-brief = "news_brief.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["src"]

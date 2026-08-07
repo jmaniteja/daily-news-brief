@@ -1,0 +1,27 @@
+topic: Artificial intelligence
+keywords:
+  - AI agents
+  - reasoning models
+exclude:
+  - cryptocurrency
+timezone: Europe/London
+max_stories: 10
+lookback_hours: 48
+cloudflare_model: "@cf/zai-org/glm-4.7-flash"
+sources:
+  - name: OpenAI News
+    type: rss
+    url: https://openai.com/news/rss.xml
+    limit: 20
+  - name: Hacker News
+    type: hacker_news
+    url: https://news.ycombinator.com/
+    limit: 30
+  - name: GitHub Blog
+    type: rss
+    url: https://github.blog/feed/
+    limit: 20
+  - name: GitHub Changelog
+    type: rss
+    url: https://github.blog/changelog/feed/
+    limit: 20
